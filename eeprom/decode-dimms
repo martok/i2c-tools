@@ -5,7 +5,7 @@
 # Copyright 1998, 1999 Philip Edelbrock <phil@netroedge.com>
 # modified by Christian Zuckschwerdt <zany@triq.net>
 # modified by Burkart Lingner <burkart@bollchen.de>
-# Copyright (C) 2005-2011  Jean Delvare <khali@linux-fr.org>
+# Copyright (C) 2005-2013  Jean Delvare <jdelvare@suse.de>
 #
 #    This program is free software; you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -40,6 +40,7 @@ require 5.004;
 use strict;
 use POSIX qw(ceil);
 use Fcntl qw(:DEFAULT :seek);
+use File::Basename;
 use vars qw($opt_html $opt_bodyonly $opt_side_by_side $opt_merge
 	    $opt_igncheck $use_sysfs $use_hexdump $sbs_col_width
 	    @vendors %decode_callback $revision @dimm $current %hexdump_cache);
@@ -59,21 +60,21 @@ $revision =~ s/ \([^()]*\)//;
  "RCA", "Raytheon", "Conexant (Rockwell)", "Seeq",
  "NXP (former Signetics, Philips Semi.)", "Synertek", "Texas Instruments", "Toshiba",
  "Xicor", "Zilog", "Eurotechnique", "Mitsubishi",
- "Lucent (AT&T)", "Exel", "Atmel", "SGS/Thomson",
+ "Lucent (AT&T)", "Exel", "Atmel", "STMicroelectronics (former SGS/Thomson)",
  "Lattice Semi.", "NCR", "Wafer Scale Integration", "IBM",
  "Tristar", "Visic", "Intl. CMOS Technology", "SSSI",
  "MicrochipTechnology", "Ricoh Ltd.", "VLSI", "Micron Technology",
- "Hyundai Electronics", "OKI Semiconductor", "ACTEL", "Sharp",
+ "SK Hynix (former Hyundai Electronics)", "OKI Semiconductor", "ACTEL", "Sharp",
  "Catalyst", "Panasonic", "IDT", "Cypress",
  "DEC", "LSI Logic", "Zarlink (former Plessey)", "UTMC",
  "Thinking Machine", "Thomson CSF", "Integrated CMOS (Vertex)", "Honeywell",
- "Tektronix", "Sun Microsystems", "SST", "ProMos/Mosel Vitelic",
+ "Tektronix", "Oracle Corporation (former Sun Microsystems)", "Silicon Storage Technology", "ProMos/Mosel Vitelic",
  "Infineon (former Siemens)", "Macronix", "Xerox", "Plus Logic",
  "SunDisk", "Elan Circuit Tech.", "European Silicon Str.", "Apple Computer",
  "Xilinx", "Compaq", "Protocol Engines", "SCI",
  "Seiko Instruments", "Samsung", "I3 Design System", "Klic",
  "Crosspoint Solutions", "Alliance Semiconductor", "Tandem", "Hewlett-Packard",
- "Intg. Silicon Solutions", "Brooktree", "New Media", "MHS Electronic",
+ "Integrated Silicon Solutions", "Brooktree", "New Media", "MHS Electronic",
  "Performance Semi.", "Winbond Electronic", "Kawasaki Steel", "Bright Micro",
  "TECMAR", "Exar", "PCMCIA", "LG Semi (former Goldstar)",
  "Northern Telecom", "Sanyo", "Array Microsystems", "Crystal Semiconductor",
@@ -83,7 +84,7 @@ $revision =~ s/ \([^()]*\)//;
  "Sony", "Cray Research", "AMS(Austria Micro)", "Vitesse",
  "Aster Electronics", "Bay Networks (Synoptic)", "Zentrum or ZMD", "TRW",
  "Thesys", "Solbourne Computer", "Allied-Signal", "Dialog",
- "Media Vision", "Level One Communication"],
+ "Media Vision", "Numonyx Corporation (former Level One Communication)"],
 ["Cirrus Logic", "National Instruments", "ILC Data Device", "Alcatel Mietec",
  "Micro Linear", "Univ. of NC", "JTAG Technologies", "BAE Systems",
  "Nchip", "Galileo Tech", "Bestlink Systems", "Graychip",
@@ -98,7 +99,7 @@ $revision =~ s/ \([^()]*\)//;
  "Century", "Hal Computers", "Rohm Company Ltd.", "Juniper Networks",
  "Libit Signal Processing", "Mushkin Enhanced Memory", "Tundra Semiconductor", "Adaptec Inc.",
  "LightSpeed Semi.", "ZSP Corp.", "AMIC Technology", "Adobe Systems",
- "Dynachip", "PNY Electronics", "Newport Digital", "MMC Networks",
+ "Dynachip", "PNY Technologies Inc. (former PNY Electronics)", "Newport Digital", "MMC Networks",
  "T Square", "Seiko Epson", "Broadcom", "Viking Components",
  "V3 Semiconductor", "Flextronics (former Orbit)", "Suwa Electronics", "Transmeta",
  "Micron CMS", "American Computer & Digital Components Inc", "Enhance 3000 Inc", "Tower Semiconductor",
@@ -118,7 +119,7 @@ $revision =~ s/ \([^()]*\)//;
  "Quadratics Superconductor", "3COM"],
 ["Camintonn Corporation", "ISOA Incorporated", "Agate Semiconductor", "ADMtek Incorporated",
  "HYPERTEC", "Adhoc Technologies", "MOSAID Technologies", "Ardent Technologies",
- "Switchcore", "Cisco Systems, Inc.", "Allayer Technologies", "WorkX AG",
+ "Switchcore", "Cisco Systems, Inc.", "Allayer Technologies", "WorkX AG (Wichman)",
  "Oasis Semiconductor", "Novanet Semiconductor", "E-M Solutions", "Power General",
  "Advanced Hardware Arch.", "Inova Semiconductors GmbH", "Telocity", "Delkin Devices",
  "Symagery Microsystems", "C-Port Corporation", "SiberCore Technologies", "Southland Microsystems",
@@ -126,9 +127,9 @@ $revision =~ s/ \([^()]*\)//;
  "HADCO Corporation", "Corsair", "Actrans System Inc.", "ALPHA Technologies",
  "Silicon Laboratories, Inc. (Cygnal)", "Artesyn Technologies", "Align Manufacturing", "Peregrine Semiconductor",
  "Chameleon Systems", "Aplus Flash Technology", "MIPS Technologies", "Chrysalis ITS",
- "ADTEC Corporation", "Kentron Technologies", "Win Technologies", "Tachyon Semiconductor (former ASIC Designs Inc.)",
+ "ADTEC Corporation", "Kentron Technologies", "Win Technologies", "Tezzaron Semiconductor (former Tachyon Semiconductor)",
  "Extreme Packet Devices", "RF Micro Devices", "Siemens AG", "Sarnoff Corporation",
- "Itautec Philco SA", "Radiata Inc.", "Benchmark Elect. (AVEX)", "Legend",
+ "Itautec SA (former Itautec Philco SA)", "Radiata Inc.", "Benchmark Elect. (AVEX)", "Legend",
  "SpecTek Incorporated", "Hi/fn", "Enikia Incorporated", "SwitchOn Networks",
  "AANetcom Incorporated", "Micro Memory Bank", "ESS Technology", "Virata Corporation",
  "Excess Bandwidth", "West Bay Semiconductor", "DSP Group", "Newport Communications",
@@ -170,26 +171,26 @@ $revision =~ s/ \([^()]*\)//;
  "PLX Technology", "Massana Design", "Intrinsity", "Valence Semiconductor",
  "Terawave Communications", "IceFyre Semiconductor", "Primarion", "Picochip Designs Ltd",
  "Silverback Systems", "Jade Star Technologies", "Pijnenburg Securealink",
- "TakeMS International AG", "Cambridge Silicon Radio",
+ "takeMS - Ultron AG (former Memorysolution GmbH)", "Cambridge Silicon Radio",
  "Swissbit", "Nazomi Communications", "eWave System",
  "Rockwell Collins", "Picocel Co., Ltd.", "Alphamosaic Ltd", "Sandburst",
  "SiCon Video", "NanoAmp Solutions", "Ericsson Technology", "PrairieComm",
  "Mitac International", "Layer N Networks", "MtekVision", "Allegro Networks",
  "Marvell Semiconductors", "Netergy Microelectronic", "NVIDIA", "Internet Machines",
- "Peak Electronics", "Litchfield Communication", "Accton Technology", "Teradiant Networks",
- "Europe Technologies", "Cortina Systems", "RAM Components", "Raqia Networks",
+ "Memorysolution GmbH (former Peak Electronics)", "Litchfield Communication", "Accton Technology", "Teradiant Networks",
+ "Scaleo Chip (former Europe Technologies)", "Cortina Systems", "RAM Components", "Raqia Networks",
  "ClearSpeed", "Matsushita Battery", "Xelerated", "SimpleTech",
  "Utron Technology", "Astec International", "AVM gmbH", "Redux Communications",
  "Dot Hill Systems", "TeraChip"],
 ["T-RAM Incorporated", "Innovics Wireless", "Teknovus", "KeyEye Communications",
  "Runcom Technologies", "RedSwitch", "Dotcast", "Silicon Mountain Memory",
  "Signia Technologies", "Pixim", "Galazar Networks", "White Electronic Designs",
- "Patriot Scientific", "Neoaxiom Corporation", "3Y Power Technology", "Europe Technologies",
+ "Patriot Scientific", "Neoaxiom Corporation", "3Y Power Technology", "Scaleo Chip (former Europe Technologies)",
  "Potentia Power Systems", "C-guys Incorporated", "Digital Communications Technology Incorporated", "Silicon-Based Technology",
  "Fulcrum Microsystems", "Positivo Informatica Ltd", "XIOtech Corporation", "PortalPlayer",
- "Zhiying Software", "Direct2Data", "Phonex Broadband", "Skyworks Solutions",
- "Entropic Communications", "Pacific Force Technology", "Zensys A/S", "Legend Silicon Corp.",
- "sci-worx GmbH", "SMSC (former Oasis Silicon Systems)", "Renesas Technology", "Raza Microelectronics",
+ "Zhiying Software", "Parker Vision, Inc. (former Direct2Data)", "Phonex Broadband", "Skyworks Solutions",
+ "Entropic Communications", "I'M Intelligent Memory Ltd (former Pacific Force Technology)", "Zensys A/S", "Legend Silicon Corp.",
+ "sci-worx GmbH", "SMSC (former Oasis Silicon Systems)", "Renesas Electronics (former Renesas Technology)", "Raza Microelectronics",
  "Phyworks", "MediaTek", "Non-cents Productions", "US Modular",
  "Wintegra Ltd", "Mathstar", "StarCore", "Oplus Technologies",
  "Mindspeed", "Just Young Computer", "Radia Communications", "OCZ",
@@ -220,7 +221,7 @@ $revision =~ s/ \([^()]*\)//;
  "g2 Microsystems", "PowerFlash Semiconductor", "P.A. Semi, Inc.", "NovaTech Solutions, S.A.",
  "c2 Microsystems, Inc.", "Level5 Networks", "COS Memory AG", "Innovasic Semiconductor",
  "02IC Co. Ltd", "Tabula, Inc.", "Crucial Technology", "Chelsio Communications",
- "Solarflare Communications", "Xambala Inc.", "EADS Astrium", "ATO Semicon Co. Ltd.",
+ "Solarflare Communications", "Xambala Inc.", "EADS Astrium", "Terra Semiconductor Inc. (former ATO Semicon Co. Ltd.)",
  "Imaging Works, Inc.", "Astute Networks, Inc.", "Tzero", "Emulex",
  "Power-One", "Pulse~LINK Inc.", "Hon Hai Precision Industry", "White Rock Networks Inc.",
  "Telegent Systems USA, Inc.", "Atrua Technologies, Inc.", "Acbel Polytech Inc.",
@@ -250,7 +251,94 @@ $revision =~ s/ \([^()]*\)//;
  "Tec-Hill", "Multigig, Inc.", "Amimon", "Euphonic Technologies, Inc.", "BRN Phoenix",
  "InSilica", "Ember Corporation", "Avexir Technologies Corporation", "Echelon Corporation",
  "Edgewater Computer Systems", "XMOS Semiconductor Ltd.", "GENUSION, Inc.", "Memory Corp NV",
- "SiliconBlue Technologies", "Rambus Inc."]);
+ "SiliconBlue Technologies", "Rambus Inc.", "Andes Technology Corporation", "Coronis Systems",
+ "Achronix Semiconductor", "Siano Mobile Silicon Ltd.", "Semtech Corporation", "Pixelworks Inc.",
+ "Gaisler Research AB", "Teranetics", "Toppan Printing Co. Ltd.", "Kingxcon",
+ "Silicon Integrated Systems", "I-O Data Device, Inc.", "NDS Americas Inc.", "Solomon Systech Limited",
+ "On Demand Microelectronics", "Amicus Wireless Inc.", "SMARDTV SNC", "Comsys Communication Ltd.",
+ "Movidia Ltd.", "Javad GNSS, Inc.", "Montage Technology Group", "Trident Microsystems", "Super Talent",
+ "Optichron, Inc.", "Future Waves UK Ltd.", "SiBEAM, Inc.", "Inicore, Inc.", "Virident Systems",
+ "M2000, Inc.", "ZeroG Wireless, Inc.", "Gingle Technology Co. Ltd.", "Space Micro Inc.", "Wilocity",
+ "Novafora, Inc.", "iKoa Corporation", "ASint Technology", "Ramtron", "Plato Networks Inc.",
+ "IPtronics AS", "Infinite-Memories", "Parade Technologies Inc.", "Dune Networks",
+ "GigaDevice Semiconductor", "Modu Ltd.", "CEITEC", "Northrop Grumman", "XRONET Corporation",
+ "Sicon Semiconductor AB", "Atla Electronics Co. Ltd.", "TOPRAM Technology", "Silego Technology Inc.",
+ "Kinglife", "Ability Industries Ltd.", "Silicon Power Computer & Communications",
+ "Augusta Technology, Inc.", "Nantronics Semiconductors", "Hilscher Gesellschaft", "Quixant Ltd.",
+ "Percello Ltd.", "NextIO Inc.", "Scanimetrics Inc.", "FS-Semi Company Ltd.", "Infinera Corporation",
+ "SandForce Inc.", "Lexar Media", "Teradyne Inc.", "Memory Exchange Corp.", "Suzhou Smartek Electronics",
+ "Avantium Corporation", "ATP Electronics Inc.", "Valens Semiconductor Ltd", "Agate Logic, Inc.",
+ "Netronome", "Zenverge, Inc.", "N-trig Ltd", "SanMax Technologies Inc.", "Contour Semiconductor Inc.",
+ "TwinMOS", "Silicon Systems, Inc.", "V-Color Technology Inc.", "Certicom Corporation", "JSC ICC Milandr",
+ "PhotoFast Global Inc.", "InnoDisk Corporation", "Muscle Power", "Energy Micro", "Innofidei",
+ "CopperGate Communications", "Holtek Semiconductor Inc.", "Myson Century, Inc.", "FIDELIX",
+ "Red Digital Cinema", "Densbits Technology", "Zempro", "MoSys", "Provigent", "Triad Semiconductor, Inc."],
+["Siklu Communication Ltd.", "A Force Manufacturing Ltd.", "Strontium", "Abilis Systems", "Siglead, Inc.",
+ "Ubicom, Inc.", "Unifosa Corporation", "Stretch, Inc.", "Lantiq Deutschland GmbH", "Visipro",
+ "EKMemory", "Microelectronics Institute ZTE", "Cognovo Ltd.", "Carry Technology Co. Ltd.", "Nokia",
+ "King Tiger Technology", "Sierra Wireless", "HT Micron", "Albatron Technology Co. Ltd.",
+ "Leica Geosystems AG", "BroadLight", "AEXEA", "ClariPhy Communications, Inc.", "Green Plug",
+ "Design Art Networks", "Mach Xtreme Technology Ltd.", "ATO Solutions Co. Ltd.", "Ramsta",
+ "Greenliant Systems, Ltd.", "Teikon", "Antec Hadron", "NavCom Technology, Inc.",
+ "Shanghai Fudan Microelectronics", "Calxeda, Inc.", "JSC EDC Electronics", "Kandit Technology Co. Ltd.",
+ "Ramos Technology", "Goldenmars Technology", "XeL Technology Inc.", "Newzone Corporation",
+ "ShenZhen MercyPower Tech", "Nanjing Yihuo Technology", "Nethra Imaging Inc.", "SiTel Semiconductor BV",
+ "SolidGear Corporation", "Topower Computer Ind Co Ltd.", "Wilocity", "Profichip GmbH",
+ "Gerad Technologies", "Ritek Corporation", "Gomos Technology Limited", "Memoright Corporation",
+ "D-Broad, Inc.", "HiSilicon Technologies", "Syndiant Inc.", "Enverv Inc.", "Cognex",
+ "Xinnova Technology Inc.", "Ultron AG", "Concord Idea Corporation", "AIM Corporation",
+ "Lifetime Memory Products", "Ramsway", "Recore Systems BV", "Haotian Jinshibo Science Tech",
+ "Being Advanced Memory", "Adesto Technologies", "Giantec Semiconductor, Inc.", "HMD Electronics AG",
+ "Gloway International (HK)", "Kingcore", "Anucell Technology Holding",
+ "Accord Software & Systems Pvt. Ltd.", "Active-Semi Inc.", "Denso Corporation", "TLSI Inc.",
+ "Shenzhen Daling Electronic Co. Ltd.", "Mustang", "Orca Systems", "Passif Semiconductor",
+ "GigaDevice Semiconductor (Beijing) Inc.", "Memphis Electronic", "Beckhoff Automation GmbH",
+ "Harmony Semiconductor Corp (former ProPlus Design Solutions)", "Air Computers SRL", "TMT Memory",
+ "Eorex Corporation", "Xingtera", "Netsol", "Bestdon Technology Co. Ltd.", "Baysand Inc.",
+ "Uroad Technology Co. Ltd. (former Triple Grow Industrial Ltd.)", "Wilk Elektronik S.A.",
+ "AAI", "Harman", "Berg Microelectronics Inc.", "ASSIA, Inc.", "Visiontek Products LLC",
+ "OCMEMORY", "Welink Solution Inc.", "Shark Gaming", "Avalanche Technology",
+ "R&D Center ELVEES OJSC", "KingboMars Technology Co. Ltd.",
+ "High Bridge Solutions Industria Eletronica", "Transcend Technology Co. Ltd.",
+ "Everspin Technologies", "Hon-Hai Precision", "Smart Storage Systems", "Toumaz Group",
+ "Zentel Electronics Corporation", "Panram International Corporation",
+ "Silicon Space Technology", "LITE-ON IT Corporation", "Inuitive", "HMicro",
+ "BittWare Inc.", "GLOBALFOUNDRIES", "ACPI Digital Co. Ltd", "Annapurna Labs",
+ "AcSiP Technology Corporation", "Idea! Electronic Systems", "Gowe Technology Co. Ltd",
+ "Hermes Testing Solutions Inc.", "Positivo BGH", "Intelligence Silicon Technology"],
+["3D PLUS", "Diehl Aerospace", "Fairchild", "Mercury Systems",
+ "Sonics Inc.", "GE Intelligent Platforms GmbH & Co.", "Shenzhen Jinge Information Co. Ltd",
+ "SCWW", "Silicon Motion Inc.", "Anurag", "King Kong",
+ "FROM30 Co. Ltd", "Gowin Semiconductor Corp", "Fremont Micro Devices Ltd",
+ "Ericsson Modems", "Exelis", "Satixfy Ltd", "Galaxy Microsystems Ltd",
+ "Gloway International Co. Ltd", "Lab", "Smart Energy Instruments",
+ "Approved Memory Corporation", "Axell Corporation", "ISD Technology Limited",
+ "Phytium", "Xi'an SinoChip Semiconductor", "Ambiq Micro", "eveRAM Technology Inc.",
+ "Infomax", "Butterfly Network Inc.", "Shenzhen City Gcai Electronics",
+ "Stack Devices Corporation", "ADK Media Group", "TSP Global Co. Ltd",
+ "HighX", "Shenzhen Elicks Technology", "ISSI/Chingis", "Google Inc.",
+ "Dasima International Development", "Leahkinn Technology Limited",
+ "HIMA Paul Hildebrandt GmbH Co KG", "Keysight Technologies",
+ "Techcomp International (Fastable)", "Ancore Technology Corporation",
+ "Nuvoton", "Korea Uhbele International Group Ltd", "Ikegami Tsushinki Co. Ltd",
+ "RelChip Inc.", "Baikal Electronics", "Nemostech Inc.",
+ "Memorysolution GmbH", "Silicon Integrated Systems Corporation",
+ "Xiede", "Multilaser Components", "Flash Chi", "Jone",
+ "GCT Semiconductor Inc.", "Hong Kong Zetta Device Technology",
+ "Unimemory Technology(s) Pte Ltd", "Cuso", "Kuso",
+ "Uniquify Inc.", "Skymedi Corporation", "Core Chance Co. Ltd",
+ "Tekism Co. Ltd", "Seagate Technology PLC", "Hong Kong Gaia Group Co. Limited",
+ "Gigacom Semiconductor LLC", "V2 Technologies", "TLi", "Neotion",
+ "Lenovo", "Shenzhen Zhongteng Electronic Corp. Ltd", "Compound Photonics",
+ "Cognimem Technologies Inc.", "Shenzhen Pango Microsystems Co. Ltd",
+ "Vasekey", "Cal-Comp Industria de Semicondutores", "Eyenix Co. Ltd",
+ "Heoriady", "Accelerated Memory Production Inc.", "INVECAS Inc.",
+ "AP Memory", "Douqi Technology", "Etron Technology Inc.",
+ "Indie Semiconductor", "Socionext Inc.", "HGST", "EVGA",
+ "Audience Inc.", "EpicGear", "Vitesse Enterprise Co.",
+ "Foxtronn International Corporation", "Bretelon Inc.",
+ "Zbit Semiconductor Inc."]
+);
 
 $use_sysfs = -d '/sys/bus';
 
@@ -283,16 +371,34 @@ sub parity($)
 	return ($parity & 1);
 }
 
+# The code byte includes parity, the count byte does not.
+sub manufacturer_common($$)
+{
+	my ($count, $code) = @_;
+	my $manufacturer;
+
+	return "Invalid" if parity($code) != 1
+			 or ($code &= 0x7F) == 0;
+	return "Unknown" if $count >= @vendors
+			 or $code - 1 >= @{$vendors[$count]};
+	$manufacturer = $vendors[$count][$code - 1];
+	$manufacturer =~ s/ \(former .*\)$// if $opt_side_by_side;
+	return $manufacturer;
+}
+
 # New encoding format (as of DDR3) for manufacturer just has a count of
 # leading 0x7F rather than all the individual bytes.  The count bytes includes
 # parity!
 sub manufacturer_ddr3($$)
 {
 	my ($count, $code) = @_;
-	return "Invalid" if parity($count) != 1;
-	return "Invalid" if parity($code) != 1;
-	return (($code & 0x7F) - 1 > $vendors[$count & 0x7F]) ? "Unknown" :
-		$vendors[$count & 0x7F][($code & 0x7F) - 1];
+	my $manufacturer;
+
+	return "Undefined" unless spd_written($count, $code);
+
+	$manufacturer = manufacturer_common($count & 0x7F, $code);
+	$manufacturer .= "? (Invalid parity)" if parity($count) != 1;
+	return $manufacturer;
 }
 
 sub manufacturer(@)
@@ -308,11 +414,7 @@ sub manufacturer(@)
 	}
 
 	return ("Invalid", []) unless defined $first;
-	return ("Invalid", [$first, @bytes]) if parity($first) != 1;
-	if (parity($ai) == 0) {
-		$ai |= 0x80;
-	}
-	return (manufacturer_ddr3($ai, $first), \@bytes);
+	return (manufacturer_common($ai, $first), \@bytes);
 }
 
 sub manufacturer_data(@)
@@ -355,7 +457,8 @@ sub html_encode($)
 	my $text = shift;
 	$text =~ s/</\&lt;/sg;
 	$text =~ s/>/\&gt;/sg;
-	$text =~ s/\n/<br>\n/sg;
+	$text =~ s/ degrees C/\&deg;C/sg;
+	$text =~ s/\n/<br\/>\n/sg;
 	return $text;
 }
 
@@ -380,11 +483,22 @@ sub real_printl($$) # print a line w/ label and values
 	if ($opt_html) {
 		$label = html_encode($label);
 		@values = map { html_encode($_) } @values;
-		print "<tr><td valign=top>$label</td>";
-		if ($opt_merge && $same_values) {
-			print "<td colspan=".(scalar @values).">$values[0]</td>";
-		} else {
+		print "<tr><td style=\"vertical-align: top;\">$label</td>";
+		if (!$opt_merge) {
 			print "<td>$_</td>" foreach @values;
+		} elsif ($same_values) {
+			print "<td colspan=\"".(scalar @values)."\">$values[0]</td>";
+		} else {
+			# For HTML output, merge adjacent cells even if
+			# the whole line cannot be merged.
+			my $colcnt = 0;
+			while (@values) {
+				$colcnt++;
+				my $value = shift @values;
+				next if (@values && $value eq $values[0]);
+				print "<td" . ($colcnt > 1 ? " colspan=\"$colcnt\"" : "") .">$value</td>";
+				$colcnt = 0;
+			}
 		}
 		print "</tr>\n";
 	} else {
@@ -392,7 +506,7 @@ sub real_printl($$) # print a line w/ label and values
 			splice(@values, 1);
 		}
 
-		my $format = "%-47s".((" %-".$sbs_col_width."s") x (scalar @values - 1))." %s\n";
+		my $format = "%-47s".(("  %-".$sbs_col_width."s") x (scalar @values - 1))."  %s\n";
 		my $maxl = 0; # Keep track of the max number of lines
 
 		# It's a bit tricky because each value may span over more than
@@ -421,14 +535,16 @@ sub real_printl($$) # print a line w/ label and values
 	}
 }
 
-sub printl2($$) # print a line w/ label and value (outside a table)
+sub printl2 # print a line w/ label and value (outside a table)
 {
-	my ($label, $value) = @_;
+	my ($label, $value, $style) = @_;
 	if ($opt_html) {
 		$label = html_encode($label);
 		$value = html_encode($value);
+		print "<p", (defined $style ? " style=\"$style\"" : ""), ">";
 	}
 	print "$label: $value\n";
+	print "</p>\n" if $opt_html;
 }
 
 sub real_prints($) # print separator w/ given text
@@ -437,7 +553,7 @@ sub real_prints($) # print separator w/ given text
 	$ncol = 1 unless $ncol;
 	if ($opt_html) {
 		$label = html_encode($label);
-		print "<tr><td align=center colspan=".(1+$ncol)."><b>$label</b></td></tr>\n";
+		print "<tr><td style=\"font-weight: bold; text-align: center;\" colspan=\"".(1+$ncol)."\">$label</td></tr>\n";
 	} else {
 		print "\n---=== $label ===---\n";
 	}
@@ -492,7 +608,12 @@ sub prints($) # print separator w/ given text
 
 # Helper functions
 
-sub tns($) # print a time in ns
+sub tns1($) # print a time in ns, with 1 decimal digit
+{
+	return sprintf("%.1f ns", $_[0]);
+}
+
+sub tns($) # print a time in ns, with 2 decimal digits
 {
 	return sprintf("%3.2f ns", $_[0]);
 }
@@ -525,16 +646,21 @@ sub sdram_voltage_interface_level($)
 	return ($_[0] < @levels) ? $levels[$_[0]] : "Undefined!";
 }
 
-# Common to SDR and DDR SDRAM
+# Common to SDR, DDR and DDR2 SDRAM
 sub sdram_module_configuration_type($)
 {
-	my @types = (
-		"No Parity",			# 0
-		"Parity",			# 1
-		"ECC",				# 2
-	);
+	my $byte = $_[0] & 0x07;
+	my @edc;
 
-	return ($_[0] < @types) ? $types[$_[0]] : "Undefined!";
+	return "No Parity" if $byte == 0;
+
+	# Data ECC includes Data Parity so don't print both
+	push @edc, "Data Parity" if ($byte & 0x03) == 0x01;
+	push @edc, "Data ECC" if ($byte & 0x02);
+	# New in DDR2 specification
+	push @edc, "Address/Command Parity" if ($byte & 0x04);
+
+	return join ", ", @edc;
 }
 
 # Parameter: EEPROM bytes 0-127 (using 3-62)
@@ -542,9 +668,12 @@ sub decode_sdr_sdram($)
 {
 	my $bytes = shift;
 	my $temp;
+	my ($ctime, $ctime1, $ctime2, $ctime_min);
 
 # SPD revision
-	printl("SPD Revision", $bytes->[62]);
+	# Starting with SPD revision 1.2, this byte is encoded in BCD
+	printl("SPD Revision", $bytes->[62] < 0x12 ? $bytes->[62] :
+		($bytes->[62] >> 4) . "." . ($bytes->[62] & 0xf));
 
 #size computation
 
@@ -573,10 +702,10 @@ sub decode_sdr_sdram($)
 	my $trcd;
 	my $trp;
 	my $tras;
-	my $ctime = ($bytes->[9] >> 4) + ($bytes->[9] & 0xf) * 0.1;
+	$ctime_min = $ctime = ($bytes->[9] >> 4) + ($bytes->[9] & 0xf) * 0.1;
 
 	$trcd = $bytes->[29];
-	$trp = $bytes->[27];;
+	$trp = $bytes->[27];
 	$tras = $bytes->[30];
 
 	printl("tCL-tRCD-tRP-tRAS",
@@ -673,7 +802,7 @@ sub decode_sdr_sdram($)
 		else {
 			$temp += 15 if $temp < 4;
 			$temp += ($bytes->[23] & 0xf) * 0.1;
-			$temp .= " ns";
+			$ctime1 = $temp;
 		}
 		$cycle_time .= "\n$temp ns at CAS ".$cas[$#cas-1];
 
@@ -682,7 +811,6 @@ sub decode_sdr_sdram($)
 		else {
 			$temp += 15 if $temp < 4;
 			$temp += ($bytes->[24] & 0xf) * 0.1;
-			$temp .= " ns";
 		}
 		$access_time .= "\n$temp ns at CAS ".$cas[$#cas-1];
 	}
@@ -692,7 +820,7 @@ sub decode_sdr_sdram($)
 		if ($temp == 0) { $temp = "Undefined!"; }
 		else {
 			$temp += ($bytes->[25] & 0x3) * 0.25;
-			$temp .= " ns";
+			$ctime2 = $temp;
 		}
 		$cycle_time .= "\n$temp ns at CAS ".$cas[$#cas-2];
 
@@ -700,7 +828,6 @@ sub decode_sdr_sdram($)
 		if ($temp == 0) { $temp = "Undefined!"; }
 		else {
 			$temp += ($bytes->[26] & 0x3) * 0.25;
-			$temp .= " ns";
 		}
 		$access_time .= "\n$temp ns at CAS ".$cas[$#cas-2];
 	}
@@ -708,6 +835,7 @@ sub decode_sdr_sdram($)
 	printl_cond(defined $cycle_time, "Cycle Time", $cycle_time);
 	printl_cond(defined $access_time, "Access Time", $access_time);
 
+	prints("Attributes");
 	$temp = "";
 	if ($bytes->[21] & 1) { $temp .= "Buffered Address/Control Inputs\n"; }
 	if ($bytes->[21] & 2) { $temp .= "Registered Address/Control Inputs\n"; }
@@ -717,8 +845,27 @@ sub decode_sdr_sdram($)
 	if ($bytes->[21] & 32) { $temp .= "Differential Clock Input\n"; }
 	if ($bytes->[21] & 64) { $temp .= "Redundant Row Address\n"; }
 	if ($bytes->[21] & 128) { $temp .= "Undefined (bit 7)\n"; }
-	if ($bytes->[21] == 0) { $temp .= "(None Reported)\n"; }
-	printl("SDRAM Module Attributes", $temp);
+	printl_cond($bytes->[21], "SDRAM Module Attributes", $temp);
+
+# standard DDR speeds
+	prints("Timings at Standard Speeds");
+	foreach $ctime (7.5, 10, 15) {
+		my $best_cas;
+
+		# Find min CAS latency at this speed
+		if (defined $ctime2 && $ctime >= $ctime2) {
+			$best_cas = $cas[$#cas-2];
+		} elsif (defined $ctime1 && $ctime >= $ctime1) {
+			$best_cas = $cas[$#cas-1];
+		} else {
+			$best_cas = $cas[$#cas];
+		}
+
+		printl_cond($ctime >= $ctime_min,
+			    "tCL-tRCD-tRP-tRAS as PC" . int(1000 / $ctime),
+			    ddr_core_timings($best_cas, $ctime,
+					     $trcd, $trp, $tras));
+	}
 
 	$temp = "";
 	if ($bytes->[22] & 1) { $temp .= "Supports Early RAS# Recharge\n"; }
@@ -733,6 +880,7 @@ sub decode_sdr_sdram($)
 	if ($bytes->[22] & 128) { $temp .= "Undefined (bit 7)\n"; }
 	printl("SDRAM Device Attributes (General)", $temp);
 
+	prints("Timing Parameters");
 	printl("Minimum Row Precharge Time",
 	       value_or_undefined($bytes->[27], "ns"));
 
@@ -776,11 +924,28 @@ sub decode_sdr_sdram($)
 		    (($bytes->[35] >> 7) ? -$temp : $temp) . " ns");
 }
 
+sub as_ddr($$)
+{
+	my ($gen, $ctime) = @_;
+
+	return " as DDR" . ($gen == 1 ? "" : $gen) . "-" .
+	       int(2000 / $ctime);
+}
+
+sub ddr_core_timings($$$$$)
+{
+	my ($cas, $ctime, $trcd, $trp, $tras) = @_;
+
+	return $cas . "-" . ceil($trcd/$ctime) . "-" . ceil($trp/$ctime) .
+		"-" . ceil($tras/$ctime);
+}
+
 # Parameter: EEPROM bytes 0-127 (using 3-62)
 sub decode_ddr_sdram($)
 {
 	my $bytes = shift;
 	my $temp;
+	my ($ctime, $ctime1, $ctime2, $ctime_min, $ctime_max);
 
 # SPD revision
 	printl_cond($bytes->[62] != 0xff, "SPD Revision",
@@ -789,15 +954,15 @@ sub decode_ddr_sdram($)
 # speed
 	prints("Memory Characteristics");
 
-	$temp = ($bytes->[9] >> 4) + ($bytes->[9] & 0xf) * 0.1;
-	my $ddrclk = 2 * (1000 / $temp);
+	$ctime_min = $ctime = ($bytes->[9] >> 4) + ($bytes->[9] & 0xf) * 0.1;
+	my $ddrclk = 2 * (1000 / $ctime);
 	my $tbits = ($bytes->[7] * 256) + $bytes->[6];
 	if (($bytes->[11] == 2) || ($bytes->[11] == 1)) { $tbits = $tbits - 8; }
 	my $pcclk = int ($ddrclk * $tbits / 8);
 	$pcclk += 100 if ($pcclk % 100) >= 50; # Round properly
 	$pcclk = $pcclk - ($pcclk % 100);
 	$ddrclk = int ($ddrclk);
-	printl("Maximum module speed", "${ddrclk}MHz (PC${pcclk})");
+	printl("Maximum module speed", "$ddrclk MHz (PC${pcclk})");
 
 #size computation
 	my $k = 0;
@@ -814,6 +979,10 @@ sub decode_ddr_sdram($)
 		printl("Size", "INVALID: " . $bytes->[3] . ", " . $bytes->[4] . ", " .
 			       $bytes->[5] . ", " . $bytes->[17]);
 	}
+
+	printl("Banks x Rows x Columns x Bits",
+	       join(' x ', $bytes->[17], $bytes->[3], $bytes->[4], $bytes->[6]));
+	printl("Ranks", $bytes->[5]);
 
 	printl("Voltage Interface Level",
 	       sdram_voltage_interface_level($bytes->[8]));
@@ -835,17 +1004,10 @@ sub decode_ddr_sdram($)
 	my $trcd;
 	my $trp;
 	my $tras;
-	my $ctime = ($bytes->[9] >> 4) + ($bytes->[9] & 0xf) * 0.1;
 
 	$trcd = ($bytes->[29] >> 2) + (($bytes->[29] & 3) * 0.25);
 	$trp = ($bytes->[27] >> 2) + (($bytes->[27] & 3) * 0.25);
 	$tras = $bytes->[30];
-
-	printl("tCL-tRCD-tRP-tRAS",
-		$highestCAS . "-" .
-		ceil($trcd/$ctime) . "-" .
-		ceil($trp/$ctime) . "-" .
-		ceil($tras/$ctime));
 
 # latencies
 	printl("Supported CAS Latencies", cas_latencies(keys %cas));
@@ -867,38 +1029,107 @@ sub decode_ddr_sdram($)
 	printl("Supported WE Latencies", $temp);
 
 # timings
-	my ($cycle_time, $access_time);
+	my ($cycle_time, $access_time, $core_timings);
 
 	if (exists $cas{$highestCAS}) {
+		$core_timings = ddr_core_timings($highestCAS, $ctime,
+			$trcd, $trp, $tras) . as_ddr(1, $ctime);
+
 		$cycle_time = "$ctime ns at CAS $highestCAS";
 		$access_time = (($bytes->[10] >> 4) * 0.1 + ($bytes->[10] & 0xf) * 0.01)
 			     . " ns at CAS $highestCAS";
 	}
 
 	if (exists $cas{$highestCAS-0.5} && spd_written(@$bytes[23..24])) {
-		$cycle_time .= "\n".(($bytes->[23] >> 4) + ($bytes->[23] & 0xf) * 0.1)
-			     . " ns at CAS ".($highestCAS-0.5);
+		$ctime1 = ($bytes->[23] >> 4) + ($bytes->[23] & 0xf) * 0.1;
+		$core_timings .= "\n".ddr_core_timings($highestCAS-0.5, $ctime1,
+			$trcd, $trp, $tras) . as_ddr(1, $ctime1);
+
+		$cycle_time .= "\n$ctime1 ns at CAS ".($highestCAS-0.5);
 		$access_time .= "\n".(($bytes->[24] >> 4) * 0.1 + ($bytes->[24] & 0xf) * 0.01)
 			      . " ns at CAS ".($highestCAS-0.5);
 	}
 
 	if (exists $cas{$highestCAS-1} && spd_written(@$bytes[25..26])) {
-		$cycle_time .= "\n".(($bytes->[25] >> 4) + ($bytes->[25] & 0xf) * 0.1)
-			     . " ns at CAS ".($highestCAS-1);
+		$ctime2 = ($bytes->[25] >> 4) + ($bytes->[25] & 0xf) * 0.1,
+		$core_timings .= "\n".ddr_core_timings($highestCAS-1, $ctime2,
+			$trcd, $trp, $tras) . as_ddr(1, $ctime2);
+
+		$cycle_time .= "\n$ctime2 ns at CAS ".($highestCAS-1);
 		$access_time .= "\n".(($bytes->[26] >> 4) * 0.1 + ($bytes->[26] & 0xf) * 0.01)
 			      . " ns at CAS ".($highestCAS-1);
 	}
 
+	$ctime_max = $bytes->[43] == 0xff ? 0 : $bytes->[43]/4;
+
+	printl_cond(defined $core_timings, "tCL-tRCD-tRP-tRAS", $core_timings);
 	printl_cond(defined $cycle_time, "Minimum Cycle Time", $cycle_time);
 	printl_cond(defined $access_time, "Maximum Access Time", $access_time);
+	printl_cond($bytes->[43] & 0xfc,
+		    "Maximum Cycle Time (tCK max)",
+		    $bytes->[43] == 0xff ? "No minimum frequency" :
+		    $bytes->[43] == 0 ? "" : # Wouldn't be displayed, prevent div by 0
+		    tns1($ctime_max)." (DDR-".int(8000 / $bytes->[43]).")");
+
+# standard DDR speeds
+	prints("Timings at Standard Speeds");
+	foreach $ctime (5, 6, 7.5, 10) {
+		my $best_cas;
+
+		# Find min CAS latency at this speed
+		if (defined $ctime2 && $ctime >= $ctime2) {
+			$best_cas = $highestCAS-1;
+		} elsif (defined $ctime1 && $ctime >= $ctime1) {
+			$best_cas = $highestCAS-0.5;
+		} else {
+			$best_cas = $highestCAS;
+		}
+
+		printl_cond($ctime >= $ctime_min && ($ctime_max < 1 || $ctime <= $ctime_max),
+			    "tCL-tRCD-tRP-tRAS" . as_ddr(1, $ctime),
+			    ddr_core_timings($best_cas, $ctime,
+					     $trcd, $trp, $tras));
+	}
+
+# more timing information
+	prints("Timing Parameters");
+	printl_cond($bytes->[32] != 0xff,
+		    "Address/Command Setup Time Before Clock",
+		    tns(ddr2_sdram_atime($bytes->[32])));
+	printl_cond($bytes->[33] != 0xff,
+		    "Address/Command Hold Time After Clock",
+		    tns(ddr2_sdram_atime($bytes->[33])));
+	printl_cond($bytes->[34] != 0xff,
+		    "Data Input Setup Time Before Clock",
+		    tns(ddr2_sdram_atime($bytes->[34])));
+	printl_cond($bytes->[35] != 0xff,
+		    "Data Input Hold Time After Clock",
+		    tns(ddr2_sdram_atime($bytes->[35])));
+	printl("Minimum Row Precharge Delay (tRP)", tns($trp));
+	printl_cond($bytes->[28] & 0xfc,
+		    "Minimum Row Active to Row Active Delay (tRRD)",
+		    tns($bytes->[28]/4));
+	printl("Minimum RAS# to CAS# Delay (tRCD)", tns($trcd));
+	printl("Minimum RAS# Pulse Width (tRAS)", tns($tras));
+	printl_cond($bytes->[41] && $bytes->[41] != 0xff,
+		    "Minimum Active to Active/AR Time (tRC)",
+		    tns($bytes->[41]));
+	printl_cond($bytes->[42],
+		    "Minimum AR to Active/AR Command Period (tRFC)",
+		    tns($bytes->[42]));
+	printl_cond($bytes->[44],
+		    "Maximum DQS to DQ Skew (tDQSQ)",
+		    tns($bytes->[44]/100));
+	printl_cond(($bytes->[45] & 0xf0) && $bytes->[45] != 0xff,
+		    "Maximum Read Data Hold Skew (tQHS)",
+		    tns(ddr2_sdram_atime($bytes->[45])));
 
 # module attributes
-	if ($bytes->[47] & 0x03) {
-		if (($bytes->[47] & 0x03) == 0x01) { $temp = "1.125\" to 1.25\""; }
-		elsif (($bytes->[47] & 0x03) == 0x02) { $temp = "1.7\""; }
-		elsif (($bytes->[47] & 0x03) == 0x03) { $temp = "Other"; }
-		printl("Module Height", $temp);
-	}
+	prints("Module Attributes");
+	if (($bytes->[47] & 0x03) == 0x01) { $temp = "1.125\" to 1.25\""; }
+	elsif (($bytes->[47] & 0x03) == 0x02) { $temp = "1.7\""; }
+	else { $temp = "Other"; }
+	printl_cond($bytes->[47] & 0x03, "Module Height", $temp);
 }
 
 sub ddr2_sdram_ctime($)
@@ -967,18 +1198,16 @@ sub decode_ddr2_sdram($)
 {
 	my $bytes = shift;
 	my $temp;
-	my $ctime;
+	my ($ctime, $ctime1, $ctime2, $ctime_min, $ctime_max);
 
 # SPD revision
-	if ($bytes->[62] != 0xff) {
-		printl("SPD Revision", ($bytes->[62] >> 4) . "." .
-				       ($bytes->[62] & 0xf));
-	}
+	printl_cond($bytes->[62] != 0xff, "SPD Revision",
+		    ($bytes->[62] >> 4) . "." . ($bytes->[62] & 0xf));
 
 # speed
 	prints("Memory Characteristics");
 
-	$ctime = ddr2_sdram_ctime($bytes->[9]);
+	$ctime_min = $ctime = ddr2_sdram_ctime($bytes->[9]);
 	my $ddrclk = 2 * (1000 / $ctime);
 	my $tbits = ($bytes->[7] * 256) + $bytes->[6];
 	if ($bytes->[11] & 0x03) { $tbits = $tbits - 8; }
@@ -986,7 +1215,7 @@ sub decode_ddr2_sdram($)
 	# Round down to comply with Jedec
 	$pcclk = $pcclk - ($pcclk % 100);
 	$ddrclk = int ($ddrclk);
-	printl("Maximum module speed", "${ddrclk}MHz (PC2-${pcclk})");
+	printl("Maximum module speed", "$ddrclk MHz (PC2-${pcclk})");
 
 #size computation
 	my $k = 0;
@@ -1019,6 +1248,9 @@ sub decode_ddr2_sdram($)
 	printl("Voltage Interface Level",
 	       sdram_voltage_interface_level($bytes->[8]));
 
+	printl("Module Configuration Type",
+	       sdram_module_configuration_type($bytes->[11]));
+
 	printl("Refresh Rate", ddr2_refresh_rate($bytes->[12]));
 
 	my @burst;
@@ -1044,71 +1276,201 @@ sub decode_ddr2_sdram($)
 	$trp = ($bytes->[27] >> 2) + (($bytes->[27] & 3) * 0.25);
 	$tras = $bytes->[30];
 
-	printl("tCL-tRCD-tRP-tRAS",
-		$highestCAS . "-" .
-		ceil($trcd/$ctime) . "-" .
-		ceil($trp/$ctime) . "-" .
-		ceil($tras/$ctime));
-
 # latencies
 	printl("Supported CAS Latencies (tCL)", cas_latencies(keys %cas));
 
 # timings
-	my ($cycle_time, $access_time);
+	my ($cycle_time, $access_time, $core_timings);
 
 	if (exists $cas{$highestCAS}) {
+		$core_timings = ddr_core_timings($highestCAS, $ctime,
+			$trcd, $trp, $tras) . as_ddr(2, $ctime);
+
 		$cycle_time = tns($ctime) . " at CAS $highestCAS (tCK min)";
 		$access_time = tns(ddr2_sdram_atime($bytes->[10]))
 			     . " at CAS $highestCAS (tAC)";
 	}
 
 	if (exists $cas{$highestCAS-1} && spd_written(@$bytes[23..24])) {
-		$cycle_time .= "\n".tns(ddr2_sdram_ctime($bytes->[23]))
+		$ctime1 = ddr2_sdram_ctime($bytes->[23]);
+		$core_timings .= "\n".ddr_core_timings($highestCAS-1, $ctime1,
+			$trcd, $trp, $tras) . as_ddr(2, $ctime1);
+
+		$cycle_time .= "\n".tns($ctime1)
 			     . " at CAS ".($highestCAS-1);
 		$access_time .= "\n".tns(ddr2_sdram_atime($bytes->[24]))
 			      . " at CAS ".($highestCAS-1);
 	}
 
 	if (exists $cas{$highestCAS-2} && spd_written(@$bytes[25..26])) {
-		$cycle_time .= "\n".tns(ddr2_sdram_ctime($bytes->[25]))
+		$ctime2 = ddr2_sdram_ctime($bytes->[25]);
+		$core_timings .= "\n".ddr_core_timings($highestCAS-2, $ctime2,
+			$trcd, $trp, $tras) . as_ddr(2, $ctime2);
+
+		$cycle_time .= "\n".tns($ctime2)
 			     . " at CAS ".($highestCAS-2);
 		$access_time .= "\n".tns(ddr2_sdram_atime($bytes->[26]))
 			      . " at CAS ".($highestCAS-2);
 	}
 
+	$ctime_max = ddr2_sdram_ctime($bytes->[43]);
+
+	printl_cond(defined $core_timings, "tCL-tRCD-tRP-tRAS", $core_timings);
 	printl_cond(defined $cycle_time, "Minimum Cycle Time", $cycle_time);
 	printl_cond(defined $access_time, "Maximum Access Time", $access_time);
+	printl_cond(($bytes->[43] & 0xf0) && $bytes->[43] != 0xff,
+		    "Maximum Cycle Time (tCK max)",
+		    $ctime_max == 0 ? "" : # Wouldn't be displayed, prevent div by 0
+		    tns($ctime_max)." (DDR2-".int(2000 / $ctime_max).")");
 
-	printl("Maximum Cycle Time (tCK max)",
-	       tns(ddr2_sdram_ctime($bytes->[43])));
+# standard DDR2 speeds
+	prints("Timings at Standard Speeds");
+	foreach $ctime (1.875, 2.5, 3, 3.75, 5) {
+		my $best_cas;
+
+		# Find min CAS latency at this speed
+		if (defined $ctime2 && $ctime >= $ctime2) {
+			$best_cas = $highestCAS-2;
+		} elsif (defined $ctime1 && $ctime >= $ctime1) {
+			$best_cas = $highestCAS-1;
+		} else {
+			$best_cas = $highestCAS;
+		}
+
+		printl_cond($ctime >= $ctime_min && $ctime <= $ctime_max,
+			    "tCL-tRCD-tRP-tRAS" . as_ddr(2,$ctime),
+			    ddr_core_timings($best_cas, $ctime,
+					     $trcd, $trp, $tras));
+	}
 
 # more timing information
 	prints("Timing Parameters");
-	printl("Address/Command Setup Time Before Clock (tIS)",
-	       tns(ddr2_sdram_atime($bytes->[32])));
-	printl("Address/Command Hold Time After Clock (tIH)",
-	       tns(ddr2_sdram_atime($bytes->[33])));
-	printl("Data Input Setup Time Before Strobe (tDS)",
-	       tns(ddr2_sdram_atime($bytes->[34])));
-	printl("Data Input Hold Time After Strobe (tDH)",
-	       tns(ddr2_sdram_atime($bytes->[35])));
+	# According to the JEDEC standard, the four timings below can't be less
+	# than 0.1 ns, however we've seen memory modules code such values so
+	# handle them properly.
+	printl_cond($bytes->[32] && $bytes->[32] != 0xff,
+		    "Address/Command Setup Time Before Clock (tIS)",
+		    tns(ddr2_sdram_atime($bytes->[32])));
+	printl_cond($bytes->[33] && $bytes->[33] != 0xff,
+		    "Address/Command Hold Time After Clock (tIH)",
+		    tns(ddr2_sdram_atime($bytes->[33])));
+	printl_cond($bytes->[34] && $bytes->[34] != 0xff,
+		    "Data Input Setup Time Before Strobe (tDS)",
+		    tns(ddr2_sdram_atime($bytes->[34])));
+	printl_cond($bytes->[35] && $bytes->[35] != 0xff,
+		    "Data Input Hold Time After Strobe (tDH)",
+		    tns(ddr2_sdram_atime($bytes->[35])));
+
 	printl("Minimum Row Precharge Delay (tRP)", tns($trp));
-	printl("Minimum Row Active to Row Active Delay (tRRD)",
-	       tns($bytes->[28]/4));
+	printl_cond($bytes->[28] & 0xfc,
+		    "Minimum Row Active to Row Active Delay (tRRD)",
+		    tns($bytes->[28]/4));
 	printl("Minimum RAS# to CAS# Delay (tRCD)", tns($trcd));
 	printl("Minimum RAS# Pulse Width (tRAS)", tns($tras));
-	printl("Write Recovery Time (tWR)", tns($bytes->[36]/4));
-	printl("Minimum Write to Read CMD Delay (tWTR)", tns($bytes->[37]/4));
-	printl("Minimum Read to Pre-charge CMD Delay (tRTP)", tns($bytes->[38]/4));
-	printl("Minimum Active to Auto-refresh Delay (tRC)",
-	       tns(ddr2_sdram_rtime($bytes->[41], 0, ($bytes->[40] >> 4) & 7)));
-	printl("Minimum Recovery Delay (tRFC)",
-	       tns(ddr2_sdram_rtime($bytes->[42], $bytes->[40] & 1,
-				    ($bytes->[40] >> 1) & 7)));
-	printl("Maximum DQS to DQ Skew (tDQSQ)", tns($bytes->[44]/100));
-	printl("Maximum Read Data Hold Skew (tQHS)", tns($bytes->[45]/100));
-	printl("PLL Relock Time", $bytes->[46] . " us") if ($bytes->[46]);
+	printl_cond($bytes->[36] & 0xfc,
+		    "Write Recovery Time (tWR)",
+		    tns($bytes->[36]/4));
+	printl_cond($bytes->[37] & 0xfc,
+		    "Minimum Write to Read CMD Delay (tWTR)",
+		    tns($bytes->[37]/4));
+	printl_cond($bytes->[38] & 0xfc,
+		    "Minimum Read to Pre-charge CMD Delay (tRTP)",
+		    tns($bytes->[38]/4));
+
+	printl_cond($bytes->[41] && $bytes->[41] != 0xff,
+		    "Minimum Active to Auto-refresh Delay (tRC)",
+		    tns(ddr2_sdram_rtime($bytes->[41], 0,
+					 ($bytes->[40] >> 4) & 7)));
+	printl_cond($bytes->[42],
+		    "Minimum Recovery Delay (tRFC)",
+		    tns(ddr2_sdram_rtime($bytes->[42], $bytes->[40] & 1,
+					 ($bytes->[40] >> 1) & 7)));
+
+	printl_cond($bytes->[44], "Maximum DQS to DQ Skew (tDQSQ)",
+		    tns($bytes->[44]/100));
+	printl_cond($bytes->[45], "Maximum Read Data Hold Skew (tQHS)",
+		    tns($bytes->[45]/100));
+	printl_cond($bytes->[46], "PLL Relock Time", $bytes->[46] . " us");
 }
+
+# Return combined time in ns
+sub ddr3_mtb_ftb($$$$)
+{
+	my ($byte1, $byte2, $mtb, $ftb) = @_;
+
+	# byte1 is unsigned in ns, but byte2 is signed in ps
+	$byte2 -= 0x100 if $byte2 & 0x80;
+
+	return $byte1 * $mtb + $byte2 * $ftb / 1000;
+}
+
+sub ddr3_reference_card($$)
+{
+	my ($rrc, $ext) = @_;
+	my $alphabet = "ABCDEFGHJKLMNPRTUVWY";
+	my $ref = $rrc & 0x1f;
+	my $revision = $ext >> 5;
+	my $ref_card;
+
+	return "ZZ" if $ref == 0x1f;
+	$ref += 0x1f if $rrc & 0x80;
+	$revision = (($rrc >> 5) & 0x03) if $revision == 0;
+
+	if ($ref < length($alphabet)) {
+		# One letter reference card
+		$ref_card = substr($alphabet, $ref, 1);
+	} else {
+		# Two letter reference card
+		my $ref1 = int($ref / (length($alphabet)));
+		$ref -= length($alphabet) * $ref1;
+		$ref_card = substr($alphabet, $ref1, 1) .
+			    substr($alphabet, $ref, 1);
+	}
+
+	return "$ref_card revision $revision";
+}
+
+sub ddr3_revision_number($)
+{
+	my $h = $_[0] >> 4;
+	my $l = $_[0] & 0x0f;
+
+	# Decode as suggested by JEDEC Standard 21-C
+	return sprintf("%d", $l) if $h == 0;
+	return sprintf("%d.%d", $h, $l) if $h < 0xa;
+	return sprintf("%c%d", ord('A') + $h - 0xa, $l);
+}
+
+sub ddr3_device_type($)
+{
+	my $byte = shift;
+	my $type = $byte & 0x80 ? "Non-Standard" : "Standard Monolithic";
+	my $die_count = ($byte >> 4) & 0x07;
+	my $loading = ($byte >> 2) & 0x03;
+
+	if ($die_count == 1) {
+		$type .= "\nSingle die";
+	} elsif ($die_count == 2) {
+		$type .= "\n2 die";
+	} elsif ($die_count == 3) {
+		$type .= "\n4 die";
+	} elsif ($die_count == 4) {
+		$type .= "\n8 die";
+	}
+
+	if ($loading == 1) {
+		$type .= "\nMulti load stack";
+	} elsif ($loading == 2) {
+		$type .= "\nSingle load stack";
+	}
+
+	return $type;
+}
+
+use constant DDR3_UNBUFFERED	=> 1;
+use constant DDR3_REGISTERED	=> 2;
+use constant DDR3_CLOCKED	=> 3;
+use constant DDR3_LOAD_REDUCED	=> 4;
 
 # Parameter: EEPROM bytes 0-127 (using 3-76)
 sub decode_ddr3_sdram($)
@@ -1116,32 +1478,59 @@ sub decode_ddr3_sdram($)
 	my $bytes = shift;
 	my $temp;
 	my $ctime;
+	my ($ftb, $mtb);
+	my $ii;
 
-	my @module_types = ("Undefined", "RDIMM", "UDIMM", "SO-DIMM",
-			    "Micro-DIMM", "Mini-RDIMM", "Mini-UDIMM");
+	my @module_types = (
+		{ type => "Undefined",		width => "Unknown"	},
+		{ type => "RDIMM",		width => "133.35 mm",	family => DDR3_REGISTERED },
+		{ type => "UDIMM",		width => "133.35 mm",	family => DDR3_UNBUFFERED },
+		{ type => "SO-DIMM",		width => "67.6 mm",	family => DDR3_UNBUFFERED },
+		{ type => "Micro-DIMM",		width => "TBD",		family => DDR3_UNBUFFERED },
+		{ type => "Mini-RDIMM",		width => "82.0 mm",	family => DDR3_REGISTERED },
+		{ type => "Mini-UDIMM",		width => "82.0 mm",	family => DDR3_UNBUFFERED },
+		{ type => "Mini-CDIMM",		width => "67.6 mm",	family => DDR3_CLOCKED },
+		{ type => "72b-SO-UDIMM",	width => "67.6 mm",	family => DDR3_UNBUFFERED },
+		{ type => "72b-SO-RDIMM",	width => "67.6 mm",	family => DDR3_REGISTERED },
+		{ type => "72b-SO-CDIMM",	width => "67.6 mm",	family => DDR3_CLOCKED },
+		{ type => "LRDIMM",		width => "133.35 mm",	family => DDR3_LOAD_REDUCED },
+		{ type => "16b-SO-DIMM",	width => "67.6 mm",	family => DDR3_UNBUFFERED },
+		{ type => "32b-SO-DIMM",	width => "67.6 mm",	family => DDR3_UNBUFFERED },
+	);
 
 	printl("Module Type", ($bytes->[3] <= $#module_types) ?
-					$module_types[$bytes->[3]] :
-					sprint("Reserved (0x%.2X)", $bytes->[3]));
+					$module_types[$bytes->[3]]->{type} :
+					sprintf("Reserved (0x%.2X)", $bytes->[3]));
+
+# time bases
+	if (($bytes->[9] & 0x0f) == 0 || $bytes->[11] == 0) {
+		print STDERR "Invalid time base divisor, can't decode\n";
+		return;
+	}
+	$ftb = ($bytes->[9] >> 4) / ($bytes->[9] & 0x0f);
+	$mtb = $bytes->[10] / $bytes->[11];
 
 # speed
 	prints("Memory Characteristics");
 
-	my $dividend = ($bytes->[9] >> 4) & 15;
-	my $divisor  = $bytes->[9] & 15;
-	printl("Fine time base", sprintf("%.3f", $dividend / $divisor) . " ps");
+	$ctime = ddr3_mtb_ftb($bytes->[12], $bytes->[34], $mtb, $ftb);
+	# Starting with DDR3-1866, vendors may start approximating the
+	# minimum cycle time. Try to guess what they really meant so
+	# that the reported speed matches the standard.
+	for ($ii = 7; $ii < 15; $ii++) {
+		if ($ctime > 7.5/$ii - $ftb/1000 && $ctime < 7.5/$ii + $ftb/1000) {
+			$ctime = 7.5/$ii;
+			last;
+		}
+	}
 
-	$dividend = $bytes->[10];
-	$divisor  = $bytes->[11];
-	my $mtb = $dividend / $divisor;
-	printl("Medium time base", tns3($mtb));
-
-	$ctime = $bytes->[12] * $mtb;
 	my $ddrclk = 2 * (1000 / $ctime);
 	my $tbits = 1 << (($bytes->[8] & 7) + 3);
 	my $pcclk = int ($ddrclk * $tbits / 8);
+	# Round down to comply with Jedec
+	$pcclk = $pcclk - ($pcclk % 100);
 	$ddrclk = int ($ddrclk);
-	printl("Maximum module speed", "${ddrclk}MHz (PC3-${pcclk})");
+	printl("Maximum module speed", "$ddrclk MHz (PC3-${pcclk})");
 
 # Size computation
 
@@ -1161,22 +1550,23 @@ sub decode_ddr3_sdram($)
 
 	printl("SDRAM Device Width", (1 << (($bytes->[7] & 7) + 2))." bits");
 
+	printl("Bus Width Extension", ($bytes->[8] & 24)." bits");
+
 	my $taa;
 	my $trcd;
 	my $trp;
 	my $tras;
 
-	$taa  = int($bytes->[16] / $bytes->[12]);
-	$trcd = int($bytes->[18] / $bytes->[12]);
-	$trp  = int($bytes->[20] / $bytes->[12]);
-	$tras = int((($bytes->[21] >> 4) * 256 + $bytes->[22]) / $bytes->[12]);
+	$taa  = ddr3_mtb_ftb($bytes->[16], $bytes->[35], $mtb, $ftb);
+	$trcd = ddr3_mtb_ftb($bytes->[18], $bytes->[36], $mtb, $ftb);
+	$trp  = ddr3_mtb_ftb($bytes->[20], $bytes->[37], $mtb, $ftb);
+	$tras = ((($bytes->[21] & 0x0f) << 8) + $bytes->[22]) * $mtb;
 
-	printl("tCL-tRCD-tRP-tRAS", join("-", $taa, $trcd, $trp, $tras));
+	printl("tCL-tRCD-tRP-tRAS", ddr_core_timings(ceil($taa / $ctime), $ctime, $trcd, $trp, $tras));
 
 # latencies
 	my $highestCAS = 0;
 	my %cas;
-	my $ii;
 	my $cas_sup = ($bytes->[15] << 8) + $bytes->[14];
 	for ($ii = 0; $ii < 15; $ii++) {
 		if ($cas_sup & (1 << $ii)) {
@@ -1186,14 +1576,38 @@ sub decode_ddr3_sdram($)
 	}
 	printl("Supported CAS Latencies (tCL)", cas_latencies(keys %cas));
 
+# standard DDR3 speeds
+	prints("Timings at Standard Speeds");
+	foreach my $ctime_at_speed (7.5/8, 7.5/7, 1.25, 1.5, 1.875, 2.5) {
+		my $best_cas = 0;
+
+		# Find min CAS latency at this speed
+		for ($ii = 14; $ii >= 0; $ii--) {
+			next unless ($cas_sup & (1 << $ii));
+			if (ceil($taa / $ctime_at_speed) <= $ii + 4) {
+				$best_cas = $ii + 4;
+			}
+		}
+
+		printl_cond($best_cas && $ctime_at_speed >= $ctime,
+			    "tCL-tRCD-tRP-tRAS" . as_ddr(3, $ctime_at_speed),
+			    ddr_core_timings($best_cas, $ctime_at_speed,
+					     $trcd, $trp, $tras));
+	}
+
 # more timing information
 	prints("Timing Parameters");
 
+	printl("Minimum Cycle Time (tCK)", tns3($ctime));
+	printl("Minimum CAS Latency Time (tAA)", tns3($taa));
 	printl("Minimum Write Recovery time (tWR)", tns3($bytes->[17] * $mtb));
+	printl("Minimum RAS# to CAS# Delay (tRCD)", tns3($trcd));
 	printl("Minimum Row Active to Row Active Delay (tRRD)",
 		tns3($bytes->[19] * $mtb));
+	printl("Minimum Row Precharge Delay (tRP)", tns3($trp));
+	printl("Minimum Active to Precharge Delay (tRAS)", tns3($tras));
 	printl("Minimum Active to Auto-Refresh Delay (tRC)",
-		tns3((((($bytes->[21] >> 4) & 15) << 8) + $bytes->[23]) * $mtb));
+		tns3(ddr3_mtb_ftb((($bytes->[21] & 0xf0) << 4) + $bytes->[23], $bytes->[38], $mtb, $ftb)));
 	printl("Minimum Recovery Delay (tRFC)",
 		tns3((($bytes->[25] << 8) + $bytes->[24]) * $mtb));
 	printl("Minimum Write to Read CMD Delay (tWTR)",
@@ -1220,52 +1634,41 @@ sub decode_ddr3_sdram($)
 	printl("RZQ/6 supported?", ($bytes->[30] & 1) ? "Yes" : "No");
 	printl("RZQ/7 supported?", ($bytes->[30] & 2) ? "Yes" : "No");
 	printl("DLL-Off Mode supported?", ($bytes->[30] & 128) ? "Yes" : "No");
-	printl("Operating temperature range", sprintf "0-%dC",
+	printl("Operating temperature range", sprintf "0-%d degrees C",
 		($bytes->[31] & 1) ? 95 : 85);
-	printl("Refresh Rate in extended temp range",
-		($bytes->[31] & 2) ? "2X" : "1X");
+	printl_cond($bytes->[31] & 1,
+		    "Refresh Rate in extended temp range",
+		    ($bytes->[31] & 2) ? "1X" : "2X");
 	printl("Auto Self-Refresh?", ($bytes->[31] & 4) ? "Yes" : "No");
 	printl("On-Die Thermal Sensor readout?",
 		($bytes->[31] & 8) ? "Yes" : "No");
 	printl("Partial Array Self-Refresh?",
 		($bytes->[31] & 128) ? "Yes" : "No");
-	printl("Thermal Sensor Accuracy",
-		($bytes->[32] & 128) ? sprintf($bytes->[32] & 127) :
-					"Not implemented");
-	printl("SDRAM Device Type",
-		($bytes->[33] & 128) ? sprintf($bytes->[33] & 127) :
-					"Standard Monolithic");
-	if ($bytes->[3] >= 1 && $bytes->[3] <= 6) {
+	printl("Module Thermal Sensor",
+		($bytes->[32] & 128) ? "Yes" : "No");
+	printl("SDRAM Device Type", ddr3_device_type($bytes->[33]));
 
+	# Following bytes are type-specific, so don't continue if type
+	# isn't known.
+	return if $bytes->[3] == 0 || $bytes->[3] > $#module_types;
+
+	if ($module_types[$bytes->[3]]->{family} == DDR3_UNBUFFERED ||
+	    $module_types[$bytes->[3]]->{family} == DDR3_REGISTERED ||
+	    $module_types[$bytes->[3]]->{family} == DDR3_CLOCKED ||
+	    $module_types[$bytes->[3]]->{family} == DDR3_LOAD_REDUCED) {
 		prints("Physical Characteristics");
-		printl("Module Height (mm)", ($bytes->[60] & 31) + 15);
-		printl("Module Thickness (mm)", sprintf("%d front, %d back",
+		printl("Module Height", (($bytes->[60] & 31) + 15) . " mm");
+		printl("Module Thickness", sprintf("%d mm front, %d mm back",
 						($bytes->[61] & 15) + 1,
 						(($bytes->[61] >> 4) & 15) +1));
-		printl("Module Width (mm)", ($bytes->[3] <= 2) ? 133.5 :
-					($bytes->[3] == 3) ? 67.6 : "TBD");
+		printl("Module Width", $module_types[$bytes->[3]]->{width});
+		printl("Module Reference Card", ddr3_reference_card($bytes->[62], $bytes->[60]));
 
-		my $alphabet = "ABCDEFGHJKLMNPRTUVWY";
-		my $ref = $bytes->[62] & 31;
-		my $ref_card;
-		if ($ref == 31) {
-			$ref_card = "ZZ";
-		} else {
-			if ($bytes->[62] & 128) {
-				$ref += 31;
-			}
-			if ($ref < length $alphabet) {
-				$ref_card = substr $alphabet, $ref, 1;
-			} else {
-				my $ref1 = int($ref / (length $alphabet));
-				$ref -= (length $alphabet) * $ref1;
-				$ref_card = (substr $alphabet, $ref1, 1) .
-					    (substr $alphabet, $ref, 1);
-			}
-		}
-		printl("Module Reference Card", $ref_card);
+		printl_cond($module_types[$bytes->[3]]->{family} == DDR3_UNBUFFERED,
+			    "Rank 1 Mapping", $bytes->[63] & 0x01 ? "Mirrored" : "Standard");
 	}
-	if ($bytes->[3] == 1 || $bytes->[3] == 5) {
+
+	if ($module_types[$bytes->[3]]->{family} == DDR3_REGISTERED) {
 		prints("Registered DIMM");
 
 		my @rows = ("Undefined", 1, 2, 4);
@@ -1276,17 +1679,27 @@ sub decode_ddr3_sdram($)
 		printl("Register device type",
 				(($bytes->[68] & 7) == 0) ? "SSTE32882" :
 					"Undefined");
-		printl("Register revision", sprintf("0x%.2X", $bytes->[67]));
-		printl("Heat spreader characteristics",
-				($bytes->[64] < 128) ? "Not incorporated" :
-					sprintf("%.2X", ($bytes->[64] & 127)));
-		my $regs;
-		for (my $i = 0; $i < 8; $i++) {
-			$regs = sprintf("SSTE32882 RC%d/RC%d",
-					$i * 2, $i * 2 + 1);
-			printl($regs, sprintf("%.2X", $bytes->[$i + 69]));
-		}
+		printl_cond($bytes->[67] != 0xff,
+			    "Register revision", ddr3_revision_number($bytes->[67]));
+		printl("Heat spreader", $bytes->[64] & 0x80 ? "Yes" : "No");
 	}
+
+	if ($module_types[$bytes->[3]]->{family} == DDR3_LOAD_REDUCED) {
+		prints("Load Reduced DIMM");
+
+		my @rows = ("Undefined", 1, 2, "Reserved");
+		printl("# DRAM Rows", $rows[($bytes->[63] >> 2) & 3]);
+		my @mirroring = ("None", "Odd ranks", "Reserved", "Reserved");
+		printl("Mirroring", $mirroring[$bytes->[63] & 3]);
+		printl("Rank Numbering", $bytes->[63] & 0x20 ? "Even only" : "Contiguous");
+		printl("Buffer Orientation", $bytes->[63] & 0x10 ? "Horizontal" : "Vertical");
+		printl("Register manufacturer",
+			manufacturer_ddr3($bytes->[65], $bytes->[66]));
+		printl_cond($bytes->[64] != 0xff,
+			    "Buffer Revision", ddr3_revision_number($bytes->[64]));
+		printl("Heat spreader", $bytes->[63] & 0x80 ? "Yes" : "No");
+	}
+
 }
 
 # Parameter: EEPROM bytes 0-127 (using 4-5)
@@ -1387,26 +1800,23 @@ sub decode_ddr3_mfg_data($)
 	printl("Module Manufacturer",
 	       manufacturer_ddr3($bytes->[117], $bytes->[118]));
 
-	if (spd_written(@{$bytes}[148..149])) {
-		printl("DRAM Manufacturer",
-		       manufacturer_ddr3($bytes->[148], $bytes->[149]));
-	}
+	printl_cond(spd_written(@{$bytes}[148..149]),
+		    "DRAM Manufacturer",
+		    manufacturer_ddr3($bytes->[148], $bytes->[149]));
 
 	printl_mfg_location_code($bytes->[119]);
 
-	if (spd_written(@{$bytes}[120..121])) {
-		printl("Manufacturing Date",
-		       manufacture_date($bytes->[120], $bytes->[121]));
-	}
+	printl_cond(spd_written(@{$bytes}[120..121]),
+		    "Manufacturing Date",
+		    manufacture_date($bytes->[120], $bytes->[121]));
 
 	printl_mfg_assembly_serial(@{$bytes}[122..125]);
 
 	printl("Part Number", part_number(@{$bytes}[128..145]));
 
-	if (spd_written(@{$bytes}[146..147])) {
-		printl("Revision Code",
-		       sprintf("0x%02X%02X", $bytes->[146], $bytes->[147]));
-	}
+	printl_cond(spd_written(@{$bytes}[146..147]),
+		    "Revision Code",
+		    sprintf("0x%02X%02X", $bytes->[146], $bytes->[147]));
 }
 
 # Parameter: EEPROM bytes 0-127 (using 64-98)
@@ -1446,9 +1856,9 @@ sub decode_intel_spec_freq($)
 
 	prints("Intel Specification");
 
-	if ($bytes->[126] == 0x66) { $temp = "66MHz"; }
-	elsif ($bytes->[126] == 100) { $temp = "100MHz or 133MHz"; }
-	elsif ($bytes->[126] == 133) { $temp = "133MHz"; }
+	if ($bytes->[126] == 0x66) { $temp = "66 MHz"; }
+	elsif ($bytes->[126] == 100) { $temp = "100 MHz or 133 MHz"; }
+	elsif ($bytes->[126] == 133) { $temp = "133 MHz"; }
 	else { $temp = "Undefined!"; }
 	printl("Frequency", $temp);
 
@@ -1464,7 +1874,7 @@ sub decode_intel_spec_freq($)
 	if ($bytes->[127] & 128) { $temp .= "CLK 0 Connected\n"; }
 	if (($bytes->[127] & 192) == 192) { $temp .= "Double-sided DIMM\n"; }
 	elsif (($bytes->[127] & 192) != 0) { $temp .= "Single-sided DIMM\n"; }
-	printl("Details for 100MHz Support", $temp);
+	printl("Details for 100 MHz Support", $temp);
 }
 
 # Read various hex dump style formats: hexdump, hexdump -C, i2cdump, eeprog
@@ -1642,6 +2052,8 @@ foreach (@ARGV) {
 			"                          (useful for postprocessing the output)\n",
 			"      --side-by-side      Display all DIMMs side-by-side if possible\n",
 			"      --merge-cells       Merge neighbour cells with identical values\n",
+			"                          (side-by-side output only, default)\n",
+			"      --no-merge-cells    Don't merge neighbour cells with identical values\n",
 			"                          (side-by-side output only)\n",
 			"  -c, --checksum          Decode completely even if checksum fails\n",
 			"  -x,                     Read data from hexdump files\n",
@@ -1675,6 +2087,10 @@ EOF
 		$opt_merge = 1;
 		next;
 	}
+	if ($_ eq '--no-merge-cells') {
+		$opt_merge = 0;
+		next;
+	}
 	if ($_ eq '-c' || $_ eq '--checksum') {
 		$opt_igncheck = 1;
 		next;
@@ -1693,22 +2109,11 @@ EOF
 		exit;
 	}
 
-	push @dimm, { eeprom => $_, file => $_ } if $use_hexdump;
+	push @dimm, { eeprom => basename($_), file => $_ } if $use_hexdump;
 }
 
-if ($opt_html && !$opt_bodyonly) {
-	print "<!DOCTYPE html PUBLIC \"-//W3C//DTD HTML 3.2 Final//EN\">\n",
-	      "<html><head>\n",
-		  "\t<meta HTTP-EQUIV=\"Content-Type\" CONTENT=\"text/html; charset=iso-8859-1\">\n",
-		  "\t<title>PC DIMM Serial Presence Detect Tester/Decoder Output</title>\n",
-		  "</head><body>\n";
-}
-
-printc("decode-dimms version $revision");
-printh('Memory Serial Presence Detect Decoder',
-'By Philip Edelbrock, Christian Zuckschwerdt, Burkart Lingner,
-Jean Delvare, Trent Piepho and others');
-
+# Default values
+$opt_merge = 1 unless defined $opt_merge;
 
 # From a sysfs device path and an attribute name, return the attribute
 # value, or undef (stolen from sensors-detect)
@@ -1728,7 +2133,7 @@ sub sysfs_device_attribute
 
 sub get_dimm_list
 {
-	my (@dirs, $dir, $file, @files);
+	my (@dirs, $dir, $opened, $file, @files);
 
 	if ($use_sysfs) {
 		@dirs = ('/sys/bus/i2c/drivers/eeprom', '/sys/bus/i2c/drivers/at24');
@@ -1738,6 +2143,7 @@ sub get_dimm_list
 
 	foreach $dir (@dirs) {
 		next unless opendir(local *DIR, $dir);
+		$opened++;
 		while (defined($file = readdir(DIR))) {
 			if ($use_sysfs) {
 				# We look for I2C devices like 0-0050 or 2-0051
@@ -1758,12 +2164,12 @@ sub get_dimm_list
 		close(DIR);
 	}
 
-	if (@files) {
-		return sort { $a->{file} cmp $b->{file} } @files;
-	} elsif (! -d '/sys/module/eeprom') {
-		print "No EEPROM found, are you sure the eeprom module is loaded?\n";
+	if (!$opened) {
+		print STDERR "No EEPROM found, try loading the eeprom or at24 module\n";
 		exit;
 	}
+
+	return sort { $a->{file} cmp $b->{file} } @files;
 }
 
 # @dimm is a list of hashes. There's one hash for each EEPROM we found.
@@ -1804,6 +2210,22 @@ if (!$opt_igncheck) {
 		}
 	}
 }
+
+
+if ($opt_html && !$opt_bodyonly) {
+	print "<!DOCTYPE html PUBLIC '-//W3C//DTD XHTML 1.1//EN' \"http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd\">\n\n",
+	      "<html xmlns=\"http://www.w3.org/1999/xhtml\" lang=\"en\">\n",
+	      "<head>\n",
+	      "\t<meta http-equiv=\"Content-Type\" content=\"text/html; charset=iso-8859-1\" />\n",
+	      "\t<title>PC DIMM Serial Presence Detect Tester/Decoder Output</title>\n",
+	      "</head>\n\n",
+	      "<body>\n";
+}
+
+printc("decode-dimms version $revision");
+printh('Memory Serial Presence Detect Decoder',
+'By Philip Edelbrock, Christian Zuckschwerdt, Burkart Lingner,
+Jean Delvare, Trent Piepho and others');
 
 # Process the valid entries
 for $current (0 .. $#dimm) {
@@ -1926,38 +2348,62 @@ if ($opt_side_by_side) {
 	}
 }
 
+# Check if all dimms have the same value for a given line
+sub line_has_same_values($)
+{
+	my $line = shift;
+	my $value = $dimm[0]->{output}->[$line]->[2];
+
+	# Skip lines with no values (headers)
+	return 1 unless defined $value;
+
+	for my $other (1 .. $#dimm) {
+		return 0 unless $value eq $dimm[$other]->{output}->[$line]->[2];
+	}
+
+	return 1;
+}
+
 # Find out the longest value string to adjust the column width
-# Note: this could be improved a bit by not taking into account strings
-# which will end up being merged.
-$sbs_col_width = 15;
-if ($opt_side_by_side && !$opt_html) {
-	for $current (0 .. $#dimm) {
-		my @output = @{$dimm[$current]->{output}};
-		my $line;
+sub find_col_width($)
+{
+	my $width = shift;
+
+	return $width unless $opt_side_by_side && !$opt_html;
+
+	my $line;
+	my $line_nr = @{$dimm[0]->{output}};
+
+	for ($line = 0; $line < $line_nr; $line++) {
+		next if $opt_merge && line_has_same_values($line);
+
 		my @strings;
 
-		for ($line = 0; $line < @output; $line++) {
-			my ($func, $label, $value) = @{$output[$line]};
+		for my $current (0 .. $#dimm) {
+			my $value = $dimm[$current]->{output}->[$line]->[2];
 			push @strings, split("\n", $value) if defined $value;
 		}
 
-		foreach $line (@strings) {
-			my $len = length($line);
-			$sbs_col_width = $len if $len > $sbs_col_width;
+		foreach my $line2 (@strings) {
+			my $len = length($line2);
+			$width = $len if $len > $width;
 		}
 	}
+
+	return $width;
 }
+
+$sbs_col_width = find_col_width(15);
 
 # Print the decoded information for all DIMMs
 for $current (0 .. $#dimm) {
 	if ($opt_side_by_side) {
 		print "\n\n";
 	} else {
-		print "<b><u>" if $opt_html;
-		printl2("\n\nDecoding EEPROM", $dimm[$current]->{file});
-		print "</u></b>" if $opt_html;
+		printl2("\n\nDecoding EEPROM", $dimm[$current]->{file},
+			"text-decoration: underline; font-weight: bold;");
 	}
-	print "<table border=1>\n" if $opt_html;
+	print "<table border=\"1\">\n" if $opt_html;
 
 	my @output = @{$dimm[$current]->{output}};
 	for (my $line = 0; $line < @output; $line++) {

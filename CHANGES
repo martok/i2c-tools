@@ -2,7 +2,62 @@ i2c-tools CHANGES
 -----------------
 
 SVN HEAD
+  tools: Fix build with recent compilers (gcc 4.6+)
+  README: Clarify licenses
+          Mention the current maintainer
+  decode-dimms: Decode module configuration type of DDR2 SDRAM
+                Decode bus width extension of DDR3 SDRAM
+                Don't choke when no EEPROM is found
+                Don't make columns larger than they need to be
+                Make side-by-side output more robust
+                Print module organization of DDR SDRAM
+                Merge cells by default in side-by-side output
+                Print extra timing values of DDR SDRAM
+                Print DDR and DDR2 core timings for all supported CAS values
+                Print DDR2 equivalent speed of tCK max
+                Don't print undefined DDR2 SDRAM timings
+		Print SDR, DDR, DDR2, DDR3 core timings for all standard speeds
+                Update manufacturer IDs
+                Make DDR3 manufacturer count parity error non-fatal
+                Strip former manufacturer name in side-by-side output mode
+                Remove duplicate "ns" in SDR timings
+                Add section headers for SDR modules
+                Fix decoding of SDR SPD revision
+                Prevent hang on reserved DDR3 module type
+                Decode more DDR3 module types
+                Fix DDR3 tRAS decoding
+                Fix DDR3 core timings rounding
+                Round down PC3 numbers to comply with Jedec
+                Don't print the DDR3 time bases
+                Decode the FTB fields of DDR3 tCk, tAA, tRCD, tRP and tRC
+                Fix speed and PC3 number of high-speed DDR3 modules
+                Decode DDR3 reference card revision
+                Print width of all known DDR3 module types
+                Print physical characteristics for all DDR3 module types
+                Don't print raw SSTE32882 register values
+                Add support for Load Reduced DIMM (LRDIMM) DDR3 modules
+                Fully decode the DDR3 SDRAM Device Type field
+                Fix DDR3 extended temp range refresh rate decoding
+                Encode "degrees" to HTML degree symbol
+                Generate XHTML 1.1 compliant markup
+                Add a manual page
+                Correctly check for out-of-bounds vendor ID
+                Update manufacturer IDs (JEP106AQ)
+  decode-vaio: Add a manual page
+  eeprog: Add a manual page
+  eeprom: Add a manual page
+  eepromer: Add a manual page
+  i2cdetect: Do a best effort detection if functionality is missing
+             Clarify the SMBus commands used for probing by default
+  i2c-dev.h: Minimize differences with kernel flavor
+             Move SMBus helper functions to include/i2c/smbus.h
   i2c-stub-from-dump: Be more tolerant on input dump format
+  library: New libi2c library
+           Properly propagate real error codes on read errors
+           Use I2C_SMBUS_BLOCK_MAX instead of hard-coding 32
+  lib/smbus.c: Add missing include which was causing a build error
+  py-smbus: Fix module level docs
+            Add support for python 3
 
 3.1.0 (2011-12-04)
   decode-dimms: Decode module configuration type of DDR SDRAM
